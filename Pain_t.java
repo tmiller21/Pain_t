@@ -17,7 +17,7 @@ public class Pain_t extends Application{
             -Select and move piece of image (DONE)
             -Allow text with user-typed input (DONE - needs more options)
             -UNDO AND REDO USING STACK(S) (DONE - degrades image)
-            -TABS (make save as dialog come up on blank) (DONE) (NEED TO DRAW ON BOTH, ONLY CAN DRAW ON 1st, Save works on most recent, Save as works on first)
+            -TABS (CAN DRAW ON BOTH AND OPEN NEW IMAGE, NEED MENU FUNCTIONS TO WORK ON BOTH)
             -BONUS: rounded square and rect, blank on new, canvas fills when growing
 
             NOTES:

@@ -9,13 +9,16 @@ import javafx.scene.paint.Paint;
 
 public class Paint_newTab extends Tab {
 
-    Paint_drawingCanvas drawingCanvas = new Paint_drawingCanvas();
+    Paint_drawingCanvas drawingCanvas;
     ScrollPane workspace = new ScrollPane();
     int tabIndex;
 
-    public Paint_newTab(String title){
+    public Paint_newTab(String title, Paint_accordionPane accordionPane){
         //set title to argument
         this.setText(title);
+
+        //pass accordionPane into drawingCanvas
+        drawingCanvas = new Paint_drawingCanvas(accordionPane);
 
         //workspace can pan, fits image to its height, and only shows scroll bars as needed
         workspace.setPannable(false);

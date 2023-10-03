@@ -9,7 +9,6 @@ import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
 import javafx.scene.Scene;
-import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.image.WritableImage;
@@ -38,10 +37,7 @@ public class Paint_mainWindow {
 
     //Drawing canvas goes inside scroll pane which goes inside tab pane
     Paint_drawingCanvas currentCanvas;
-    ScrollPane currentWorkspace;
-    //Start canvas and workspace
-    Paint_drawingCanvas startCanvas = new Paint_drawingCanvas();
-    ScrollPane startWorkspace = new ScrollPane(startCanvas);
+
     Paint_tabPane tabPane = new Paint_tabPane();
     GraphicsContext gc;
 
@@ -49,6 +45,9 @@ public class Paint_mainWindow {
     VBox toolPane = new VBox();
     //Create scroll pane so tool pane can scroll if needed (when window resized)
     ScrollPane toolScrollPane = new ScrollPane(toolPane);
+
+    //Create accordionPane
+    Paint_accordionPane accordionPane = new Paint_accordionPane();
 
     public Paint_mainWindow(Stage stage) {
 
@@ -60,23 +59,22 @@ public class Paint_mainWindow {
         //Creating an imageView to save file path and file type
         ImageView imageView = new ImageView();
 
+        //Start blank canvas and workspace
+        Paint_drawingCanvas startCanvas = new Paint_drawingCanvas(accordionPane);
+        ScrollPane startWorkspace = new ScrollPane(startCanvas);
         toolScrollPane.hbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.NEVER);
         toolScrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
-        //workspace can pan, fits image to its height, and only shows scroll bars as needed
-        startWorkspace.setPannable(false);
-        startWorkspace.setFitToHeight(true);
-        startWorkspace.hbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
-        startWorkspace.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
         //first tab upon open
-        Paint_newTab startTab = new Paint_newTab("Blank");
+        Paint_newTab startTab = new Paint_newTab("Blank", accordionPane);
         //Add tab to tabPane
         tabPane.addPaintTab(startTab);
         //Set workspace content of tab and canvas content of workspace
         startTab.setWorkspace(startWorkspace);
         startTab.setCanvas(startCanvas);
         //add accordion of first tab to toolPane
-        toolPane.getChildren().addAll(startCanvas.accordionPane);
+        toolPane.getChildren().addAll(accordionPane);
+        toolPane.setPrefWidth(200);
         //setting workspace content to white blank square upon startup
         int defaultHeightAndWidth = 800;
         startTab.setCanvasWidthAndHeight(defaultHeightAndWidth, defaultHeightAndWidth);
@@ -121,11 +119,11 @@ public class Paint_mainWindow {
 
                 //Create new tab for image
                 String tabName = file.getPath().substring(file.toString().lastIndexOf("\\") + 1);
-                Paint_newTab newTab = new Paint_newTab(tabName);
+                Paint_newTab newTab = new Paint_newTab(tabName, accordionPane);
 
                 //create and set workspace and canvas for newTab
                 newTab.setWorkspace(new ScrollPane());
-                newTab.setCanvas(new Paint_drawingCanvas());
+                newTab.setCanvas(new Paint_drawingCanvas(accordionPane));
                 //set index of new tab to current index + 1
                 newTab.setTabIndex(tabPane.getSelectionModel().getSelectedIndex()+1);
 
@@ -139,9 +137,6 @@ public class Paint_mainWindow {
                 imageHeight = imageOpened.getHeight();
                 imageWidth = imageOpened.getWidth();
                 newTab.setCanvasWidthAndHeight(imageWidth, imageHeight);
-
-                //add accordion of first tab to toolPane
-                toolPane.getChildren().addAll(startCanvas.accordionPane);
 
                 //Add tab to tabPane
                 tabPane.addPaintTab(newTab);
@@ -234,21 +229,25 @@ public class Paint_mainWindow {
         MenuItem EditMenu1 = new MenuItem("_Undo");
         EditMenu1.setOnAction(undoPressed ->{
             //before undoing, put current canvas in redo stack
-            startCanvas.accordionPane.undoRedoStack.pushRedoCanvas(currentCanvas);
-           //when undo button is pressed, get previous canvas and draw on canvas
-            Image undoImage = startCanvas.accordionPane.undoRedoStack.getUndoCanvas();
+            WritableImage redoImage = new WritableImage(startCanvas.snapshot(null,null).getPixelReader(), 0,0,(int)startTab.drawingCanvas.getWidth(),(int)startTab.drawingCanvas.getHeight());
+            startTab.drawingCanvas.redoStack.push(redoImage);
+
+            //when undo button is pressed, get previous canvas and draw on canvas
+            Image drawUndoImage = startTab.drawingCanvas.undoStack.pop();
             gc = startTab.drawingCanvas.getGraphicsContext2D();
-            gc.drawImage(undoImage, 0, 0);
+            gc.drawImage(drawUndoImage, 0, 0);
         });
 
         MenuItem EditMenu2 = new MenuItem("_Redo");
         EditMenu2.setOnAction(undoPressed ->{
             //before redoing, put current canvas in undo stack
-            startCanvas.accordionPane.undoRedoStack.pushUndoCanvas(currentCanvas);
+            WritableImage undoImage = new WritableImage(startCanvas.snapshot(null,null).getPixelReader(), 0,0,(int)startTab.drawingCanvas.getWidth(),(int)startTab.drawingCanvas.getHeight());
+            startTab.drawingCanvas.undoStack.push(undoImage);
+
             //when redo button is pressed, get redo canvas and draw on canvas
-            Image redoImage = startCanvas.accordionPane.undoRedoStack.getRedoCanvas();
+            Image drawRedoImage = startTab.drawingCanvas.redoStack.pop();
             gc = startTab.drawingCanvas.getGraphicsContext2D();
-            gc.drawImage(redoImage, 0, 0);
+            gc.drawImage(drawRedoImage, 0, 0);
         });
 
         MenuItem EditMenu3 = new MenuItem("Paste");

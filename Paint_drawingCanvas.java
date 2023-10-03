@@ -8,21 +8,23 @@ import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.scene.robot.Robot;
 
+import java.util.Stack;
+
 public class Paint_drawingCanvas extends Canvas {
 
     double x1, y1, x2, y2, xf, yf;
     Image copiedImage;
-    Paint_undoRedoStack undoRedoStack = new Paint_undoRedoStack();
     Color lineColor;
     GraphicsContext gc;
     Paint_accordionPane accordionPane;
     int drawOption;
+    Stack<Image> undoStack = new Stack<>();
+    Stack<Image> redoStack = new Stack<>();
 
-    public Paint_drawingCanvas(){
+    public Paint_drawingCanvas(Paint_accordionPane mainAccordionPane){
 
-        //Create accordionPane for this canvas
-        Paint_accordionPane currentAccordionPane = new Paint_accordionPane();
-        accordionPane=currentAccordionPane;
+        //make accordionPane for this canvas the main accordion pane
+        accordionPane = mainAccordionPane;
 
         //Add drawing actions for canvas
         this.setOnMousePressed(mousePressed -> {
@@ -32,9 +34,8 @@ public class Paint_drawingCanvas extends Canvas {
             y1 = mousePressed.getY();
 
             //call draw method
-            draw(currentAccordionPane, x1, y1);
+            draw(mainAccordionPane, x1, y1);
         });
-
     }
 
     public void draw(Paint_accordionPane accordionPane, double x1, double y1) {
@@ -48,12 +49,15 @@ public class Paint_drawingCanvas extends Canvas {
             if (accordionPane.pasteButton.isSelected()) {
                 gc = this.getGraphicsContext2D();
                 gc.drawImage(copiedImage, x1, y1);
-                undoRedoStack.pushRedoCanvas(this);
+                //take snapshot and push into redo stack
+                WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                redoStack.push(redoImage);
             }
         }
 
-        //push current canvas into undo stack
-        undoRedoStack.pushUndoCanvas(this);
+        //push current snapshot into undo stack
+        WritableImage undoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+        undoStack.push(undoImage);
 
         //Get graphics context, line color, and line width
         gc = this.getGraphicsContext2D();
@@ -99,7 +103,9 @@ public class Paint_drawingCanvas extends Canvas {
                         }
                         gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                         gc.stroke();
-                        undoRedoStack.pushRedoCanvas(this);
+                        //take snapshot and push into redo stack
+                        WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                        redoStack.push(redoImage);
                     });
                 }
 
@@ -118,7 +124,9 @@ public class Paint_drawingCanvas extends Canvas {
                     this.setOnMouseReleased(mouseReleased -> {
                         gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                         gc.stroke();
-                        undoRedoStack.pushRedoCanvas(this);
+                        //take snapshot and push into redo stack
+                        WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                        redoStack.push(redoImage);
                     });
                 }
                 break;
@@ -166,7 +174,9 @@ public class Paint_drawingCanvas extends Canvas {
                 this.setOnMouseReleased(mouseReleased -> {
                     gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                     gc.stroke();
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -208,7 +218,9 @@ public class Paint_drawingCanvas extends Canvas {
                     } else if (accordionPane.pane4.rectRoundedButton.isSelected()) {
                         gc.strokeRoundRect(xf, yf, rectWidth, rectHeight, rectWidth / 5, rectHeight / 5);
                     }
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -250,7 +262,9 @@ public class Paint_drawingCanvas extends Canvas {
                     } else if (accordionPane.squareRoundedButton.isSelected()) {
                         gc.strokeRoundRect(xf, yf, squareDim, squareDim, squareDim / 5, squareDim / 5);
                     }
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -288,7 +302,9 @@ public class Paint_drawingCanvas extends Canvas {
                     gc.lineTo(x2, y2);
                     gc.closePath();
                     gc.stroke();
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -340,7 +356,9 @@ public class Paint_drawingCanvas extends Canvas {
 
                     //draw oval
                     gc.strokeOval(xf, yf, Math.abs(ellipseWidth), Math.abs(ellipseHeight));
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -392,7 +410,9 @@ public class Paint_drawingCanvas extends Canvas {
 
                     //draw oval
                     gc.strokeOval(xf, yf, Math.abs(circleWidth), Math.abs(circleWidth));
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -453,7 +473,9 @@ public class Paint_drawingCanvas extends Canvas {
 
                     //draw polygon
                     gc.strokePolygon(xPoints, yPoints, polySides);
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -467,7 +489,9 @@ public class Paint_drawingCanvas extends Canvas {
                 this.setOnMouseReleased(mouseReleased -> {
                     //initiate string to be used for text
                     Paint_inputTextPOPUP inputTextPOPUP = new Paint_inputTextPOPUP(x1, y1, gc);
-                    undoRedoStack.pushRedoCanvas(this);
+                    //take snapshot and push into redo stack
+                    WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                    redoStack.push(redoImage);
                 });
                 break;
 
@@ -500,6 +524,9 @@ public class Paint_drawingCanvas extends Canvas {
                             //clear area selected if cutting
                             gc.setFill(Color.WHITE);
                             gc.fillRect(selectionX,selectionY,selectionWidth,selectionHeight);
+                            //take snapshot and push into redo stack
+                            WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                            redoStack.push(redoImage);
                         }
                     }
                 });
