@@ -5,11 +5,12 @@ import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
 import javafx.scene.control.Label;
-import javafx.scene.control.ScrollPane;
+import javafx.scene.image.Image;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
-import javafx.scene.robot.Robot;
+
+//ONE ACCORDION PANE CONTROLS ONE TAB
 
 public class Paint_accordionPane extends Accordion {
 
@@ -18,16 +19,9 @@ public class Paint_accordionPane extends Accordion {
 
     int drawOption;
 
-    //Determining whether line is dashed or solid. Only need one - can't be drawing multiple things at once
-    boolean isSolid;
-    boolean isStraight, isCurved;
-
     //Creating slider width labels for boxes
-    Label lineSliderWidth = new Label(1 + " pt");
     Label eraserSliderWidth = new Label(1 + " pt");
-    Label rectangleSliderWidth = new Label(1 + " pt");
     Label squareSliderWidth = new Label(1 + " pt");
-    Label triangleSliderWidth = new Label(1 + " pt");
     Label ellipseSliderWidth = new Label(1 + " pt");
     Label circleSliderWidth = new Label(1 + " pt");
 
@@ -41,68 +35,62 @@ public class Paint_accordionPane extends Accordion {
     //Creating button for color grabber
     Button colorGrabberButton = new Button("Grab Color");
 
-    //Straight and curved buttons
-    ToggleButton lineCurvedButton = new ToggleButton("Curved");
-    ToggleButton lineStraightButton = new ToggleButton("Straight");
-
-    ToggleButton rectSharpButton = new ToggleButton("Sharp");
-    ToggleButton rectRoundedButton = new ToggleButton("Rounded");
+    //sharp and round square buttons
     ToggleButton squareSharpButton = new ToggleButton("Sharp");
     ToggleButton squareRoundedButton = new ToggleButton("Rounded");
 
+    //copy/cut & paste buttons
+    ToggleButton copySelectionButton = new ToggleButton("Copy");
+    ToggleButton cutSelectionButton = new ToggleButton("Cut");
+    ToggleButton pasteButton = new ToggleButton("Paste");
 
-    public Paint_accordionPane(Canvas drawingCanvas, ScrollPane workspace){
+    //tab that accordion Pane controls
+    Paint_newTab currentTab;
 
-        //=========================Creating content within "Line" pane=================================================
-        TitledPane pane1 = new TitledPane("Line", new Label("Line"));
-        //Creating a slider
-        Slider lineSlider = new Slider(1, 48, 1);
-        lineSlider.setMajorTickUnit(18);
-        lineSlider.setMinorTickCount(9);
-        lineSlider.setBlockIncrement(1);
-        lineSlider.setShowTickMarks(true);
-        lineSlider.setSnapToTicks(true);
+    Paint_undoRedoStack undoRedoStack = new Paint_undoRedoStack();
+    Image copiedImage;
 
+    //initiate tool panes
+    Paint_lineToolPane pane1 = new Paint_lineToolPane();
+    TitledPane pane2 = new TitledPane("Color", new Label("N/A"));
+    TitledPane pane3 = new TitledPane("Erase", new Label("N/A"));
+    Paint_rectangleToolPane pane4 = new Paint_rectangleToolPane();
+    TitledPane pane5 = new TitledPane("Square", new Label("N/A"));
+    Paint_triangleToolPane pane6 = new Paint_triangleToolPane();
+    TitledPane pane7 = new TitledPane("Ellipse", new Label("N/A"));
+    TitledPane pane8 = new TitledPane("Circle", new Label("N/A"));
+    Paint_polygonToolPane pane9 = new Paint_polygonToolPane();
+    TitledPane pane10 = new TitledPane("Text", new Label("Draw Custom Text"));
+    TitledPane pane0 = new TitledPane("Selection Tool", new Label("Selection Tool"));
+
+    //thickness sliders
+    Slider eraserSlider = new Slider(1, 72, 1);
+    Slider squareSlider = new Slider(1, 48, 1);
+    Slider ellipseSlider = new Slider(1, 48, 1);
+    Slider circleSlider = new Slider(1, 48, 1);
+
+    //solid dashed switches
+    Paint_solidDashedSwitch squareSdSwitch = new Paint_solidDashedSwitch();
+    Paint_solidDashedSwitch ellipseSdSwitch = new Paint_solidDashedSwitch();
+    Paint_solidDashedSwitch circleSdSwitch = new Paint_solidDashedSwitch();
+
+    public Paint_accordionPane() {
+
+        //=========================Creating logic within "Line" pane=================================================
         //Adding actionListener for when value changes (to change text, width of circle and line)
-        lineSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
-            lineSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
+        pane1.lineSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
+            pane1.lineSliderWidth.setText(newVal.intValue() + " pt");
             gc.setLineWidth(newVal.doubleValue());
         });
-
-        //Making Hbox for slider & labels
-        HBox lineSliderPane = new HBox();
-        lineSliderPane.getChildren().addAll(lineSlider, lineSliderWidth);
-
-        //Making dotted/dashed switch
-        Paint_solidDashedSwitch lineSdSwitch = new Paint_solidDashedSwitch();
-
-        //Making straight/curved switch
-        HBox lineScSwitch = new HBox();
-        ToggleGroup lineScGroup = new ToggleGroup();
-        lineStraightButton.setToggleGroup(lineScGroup);
-        lineCurvedButton.setToggleGroup(lineScGroup);
-        lineScSwitch.getChildren().addAll(lineStraightButton, lineCurvedButton);
-
-        //Putting slider display and color picker in vbox in linePane
-        VBox linePane = new VBox();
-        linePane.getChildren().addAll(lineSliderPane, lineScSwitch, lineSdSwitch);
-        //Set spacing and padding
-        linePane.setPadding(new Insets(10, 10, 10, 10));
-        linePane.setSpacing(10);
-        pane1.setContent(linePane);
-
         //Add actionlistener to panel
         pane1.setOnMousePressed(mousePressed -> {
-           drawOption = 1;
+            drawOption = 1;
+            System.out.println("draw option changed to " + drawOption);
         });
-
-        //==================================Creating Content inside Color Pane=========================================
-        TitledPane pane2 = new TitledPane("Color", new Label("N/A"));
-
+        //==================================Creating Content/Logic inside Color Pane=========================================
         //Creating box for color picker and grabber
         VBox colorPane = new VBox();
-        colorPane.setPadding(new Insets(10,10,10,10));
+        colorPane.setPadding(new Insets(10, 10, 10, 10));
         colorPane.setSpacing(10);
 
         //set default color to black
@@ -110,9 +98,7 @@ public class Paint_accordionPane extends Accordion {
 
         //when button is pressed change drawingCanvas cursor to crosshair until
         colorGrabberButton.setOnAction(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 2;
-            drawingCanvas.setCursor(Cursor.CROSSHAIR);
         });
 
         colorPane.getChildren().addAll(colorPicker, colorGrabberButton);
@@ -120,11 +106,11 @@ public class Paint_accordionPane extends Accordion {
         //Display color pane in "Color" pane
         pane2.setContent(colorPane);
 
-        //==================================Creating Content inside Erase Pane=========================================
-        TitledPane pane3 = new TitledPane("Erase", new Label("N/A"));
-
+        pane2.setOnMousePressed(eventHandler -> {
+            drawOption = 0;
+        });
+        //==================================Creating Content/Logic inside Erase Pane=========================================
         //Creating a slider - goes to larger value for eraser
-        Slider eraserSlider = new Slider(1, 48, 1);
         eraserSlider.setMajorTickUnit(18);
         eraserSlider.setMinorTickCount(9);
         eraserSlider.setBlockIncrement(1);
@@ -133,80 +119,39 @@ public class Paint_accordionPane extends Accordion {
 
         //Adding actionListener for when value changes (to change text, width of circle and line)
         eraserSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
-            lineSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
+            eraserSliderWidth.setText(newVal.intValue() + " pt");
             gc.setLineWidth(newVal.doubleValue());
         });
 
         //Making Hbox for slider & labels
         HBox eraserSliderPane = new HBox();
         eraserSliderPane.getChildren().addAll(eraserSlider, eraserSliderWidth);
-        eraserSliderPane.setPadding(new Insets(10,10,10,10));
+        eraserSliderPane.setPadding(new Insets(10, 10, 10, 10));
         eraserSliderPane.setSpacing(10);
 
         //Putting slider display in vbox in linePane
         VBox eraserPane = new VBox();
         eraserPane.getChildren().addAll(eraserSliderPane);
-        eraserSliderPane.setPadding(new Insets(10,10,10,10));
+        eraserSliderPane.setPadding(new Insets(10, 10, 10, 10));
         eraserSliderPane.setSpacing(10);
 
         pane3.setContent(eraserSliderPane);
 
         pane3.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 3;
         });
-
-        //==================================Creating Content inside Rectangle Pane=====================================
-        TitledPane pane4 = new TitledPane("Rectangle", new Label("N/A"));
-
-        //Creating a slider
-        Slider rectangleSlider = new Slider(1,48, 1);
-        rectangleSlider.setMajorTickUnit(18);
-        rectangleSlider.setMinorTickCount(9);
-        rectangleSlider.setBlockIncrement(1);
-        rectangleSlider.setShowTickMarks(true);
-        rectangleSlider.setSnapToTicks(true);
-
+        //==================================Creating Logic inside Rectangle Pane=====================================
         //Adding actionListener for when value changes (to change text, width of line)
-        rectangleSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
-            rectangleSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
+        pane4.rectangleSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
+            pane4.rectangleSliderWidth.setText(newVal.intValue() + " pt");
             gc.setLineWidth(newVal.doubleValue());
         });
 
-        //Making hbox for slider & labels
-        HBox rectangleSliderPane = new HBox();
-        rectangleSliderPane.getChildren().addAll(rectangleSlider, rectangleSliderWidth);
-
-        //making sharp/rounded switch
-        HBox rectangleStraightRoundedSwitch = new HBox();
-        ToggleGroup rectangleStraightRoundedGroup = new ToggleGroup();
-        rectRoundedButton.setToggleGroup(rectangleStraightRoundedGroup);
-        rectSharpButton.setToggleGroup(rectangleStraightRoundedGroup);
-        rectangleStraightRoundedSwitch.getChildren().addAll(rectSharpButton, rectRoundedButton);
-
-        //Making Hbox for dotted/dashed switch & draw button
-        Paint_solidDashedSwitch rectangleSdSwitch = new Paint_solidDashedSwitch();
-
-        //Putting slider display in vbox in linePane
-        VBox rectanglePane = new VBox();
-        rectanglePane.getChildren().addAll(rectangleSliderPane, rectangleStraightRoundedSwitch, rectangleSdSwitch);
-        //Set spacing and padding
-        rectanglePane.setPadding(new Insets(10, 10, 10, 10));
-        rectanglePane.setSpacing(10);
-        pane4.setContent(rectanglePane);
-
         pane4.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 4;
         });
-
-        //==================================Creating Content inside Square Pane=========================================
-        TitledPane pane5 = new TitledPane("Square", new Label("N/A"));
-
+        //==================================Creating Content/Logic inside Square Pane=========================================
         //Creating a slider
-        Slider squareSlider = new Slider(1,48, 1);
         squareSlider.setMajorTickUnit(18);
         squareSlider.setMinorTickCount(9);
         squareSlider.setBlockIncrement(1);
@@ -216,7 +161,6 @@ public class Paint_accordionPane extends Accordion {
         //Adding actionListener for when value changes (to change text, width of line)
         squareSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
             squareSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
             gc.setLineWidth(newVal.doubleValue());
         });
 
@@ -232,64 +176,30 @@ public class Paint_accordionPane extends Accordion {
         squareStraightRoundedSwitch.getChildren().addAll(squareSharpButton, squareRoundedButton);
 
         //Making Hbox for dotted/dashed switch & draw button
-        Paint_solidDashedSwitch squareSdSwitch = new Paint_solidDashedSwitch();
+
 
         //Putting slider display in vbox in linePane
         VBox squarePane = new VBox();
-        squarePane.getChildren().addAll(squareSliderPane,squareStraightRoundedSwitch,squareSdSwitch);
+        squarePane.getChildren().addAll(squareSliderPane, squareStraightRoundedSwitch, squareSdSwitch);
         //Set spacing and padding
         squarePane.setPadding(new Insets(10, 10, 10, 10));
         squarePane.setSpacing(10);
         pane5.setContent(squarePane);
 
         pane5.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 5;
         });
-
         //==================================Creating Content inside Triangle Pane=======================================
-        TitledPane pane6 = new TitledPane("Triangle", new Label("N/A"));
-
-        //Creating a slider
-        Slider triangleSlider = new Slider(1,48, 1);
-        triangleSlider.setMajorTickUnit(18);
-        triangleSlider.setMinorTickCount(9);
-        triangleSlider.setBlockIncrement(1);
-        triangleSlider.setShowTickMarks(true);
-        triangleSlider.setSnapToTicks(true);
-
         //Adding actionListener for when value changes (to change text, width of line)
-        triangleSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
-            triangleSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
+        pane6.triangleSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
+            pane6.triangleSliderWidth.setText(newVal.intValue() + " pt");
             gc.setLineWidth(newVal.doubleValue());
         });
 
-        //Making hbox for slider & labels
-        HBox triangleSliderPane = new HBox();
-        triangleSliderPane.getChildren().addAll(triangleSlider, triangleSliderWidth);
-
-        //Making Hbox for dotted/dashed switch & draw button
-        Paint_solidDashedSwitch triangleSdSwitch = new Paint_solidDashedSwitch();
-
-        //Putting slider display in vbox in linePane
-        VBox trianglePane = new VBox();
-        trianglePane.getChildren().addAll(triangleSliderPane, triangleSdSwitch);
-        //Set spacing and padding
-        trianglePane.setPadding(new Insets(10, 10, 10, 10));
-        trianglePane.setSpacing(10);
-        pane6.setContent(trianglePane);
-
         pane6.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 6;
         });
-
         //==================================Creating Content inside Ellipse Pane========================================
-        TitledPane pane7 = new TitledPane("Ellipse", new Label("N/A"));
-
-        //Creating a slider
-        Slider ellipseSlider = new Slider(1,48, 1);
         ellipseSlider.setMajorTickUnit(18);
         ellipseSlider.setMinorTickCount(9);
         ellipseSlider.setBlockIncrement(1);
@@ -299,16 +209,12 @@ public class Paint_accordionPane extends Accordion {
         //Adding actionListener for when value changes (to change text, width of line)
         ellipseSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
             ellipseSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
             gc.setLineWidth(newVal.doubleValue());
         });
 
         //Making hbox for slider & labels
         HBox ellipseSliderPane = new HBox();
         ellipseSliderPane.getChildren().addAll(ellipseSlider, ellipseSliderWidth);
-
-        //Making Hbox for dotted/dashed switch & draw button
-        Paint_solidDashedSwitch ellipseSdSwitch = new Paint_solidDashedSwitch();
 
         //Putting slider display in vbox in linePane
         VBox ellipsePane = new VBox();
@@ -319,15 +225,9 @@ public class Paint_accordionPane extends Accordion {
         pane7.setContent(ellipsePane);
 
         pane7.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 7;
         });
-
         //==================================Creating Content inside Circle Pane=========================================
-        TitledPane pane8 = new TitledPane("Circle", new Label("N/A"));
-
-        //Creating a slider
-        Slider circleSlider = new Slider(1,48, 1);
         circleSlider.setMajorTickUnit(18);
         circleSlider.setMinorTickCount(9);
         circleSlider.setBlockIncrement(1);
@@ -337,16 +237,12 @@ public class Paint_accordionPane extends Accordion {
         //Adding actionListener for when value changes (to change text, width of line)
         circleSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
             circleSliderWidth.setText(newVal.intValue() + " pt");
-            gc = drawingCanvas.getGraphicsContext2D();
             gc.setLineWidth(newVal.doubleValue());
         });
 
         //Making hbox for slider & labels
         HBox circleSliderPane = new HBox();
         circleSliderPane.getChildren().addAll(circleSlider, circleSliderWidth);
-
-        //Making Hbox for dotted/dashed switch & draw button
-        Paint_solidDashedSwitch circleSdSwitch = new Paint_solidDashedSwitch();
 
         //Putting slider display in vbox in linePane
         VBox circlePane = new VBox();
@@ -357,78 +253,157 @@ public class Paint_accordionPane extends Accordion {
         pane8.setContent(circlePane);
 
         pane8.setOnMousePressed(mousePressed -> {
-            gc = drawingCanvas.getGraphicsContext2D();
             drawOption = 8;
         });
+        //==================================Creating Content inside Polygon Pane=========================================
+        //Adding actionListener for when value changes (to change text, width of line)
+        pane9.polygonSlider.valueProperty().addListener((observable, newVal, oldVal) -> {
+            pane9.polygonSliderWidth.setText(newVal.intValue() + " pt");
+            gc.setLineWidth(newVal.doubleValue());
+        });
 
+        pane9.setOnMousePressed(mousePressed -> {
+            drawOption = 9;
+        });
+        //==================================Creating Content inside Text Pane=========================================
+        //Creating a slider
+        Slider textSlider = new Slider(1, 48, 1);
+        textSlider.setMajorTickUnit(18);
+        textSlider.setMinorTickCount(9);
+        textSlider.setBlockIncrement(1);
+        textSlider.setShowTickMarks(true);
+        textSlider.setSnapToTicks(true);
+
+        pane10.setOnMousePressed(mousePressed -> {
+            drawOption = 10;
+        });
+        //==================================Creating Content inside Selection Tool Pane=================================
+        //making vbox for cut/copy and paste buttons
+        VBox cutCopyBox = new VBox();
+        cutCopyBox.setSpacing(10);
+
+        //making toggle group for copy and cut
+        HBox cutCopyToggleBox = new HBox();
+        ToggleGroup cutCopyToggleGroup = new ToggleGroup();
+        cutCopyToggleBox.getChildren().addAll(cutSelectionButton,copySelectionButton);
+        cutSelectionButton.setToggleGroup(cutCopyToggleGroup);
+        copySelectionButton.setToggleGroup(cutCopyToggleGroup);
+
+        //deselect paste button when copy or cut is pressed, deselect copy and cut when paste is pressed
+        copySelectionButton.setOnMousePressed(mousePressed -> {pasteButton.setSelected(false);});
+        cutSelectionButton.setOnMousePressed(mousePressed -> {pasteButton.setSelected(false);});
+        pasteButton.setOnMousePressed(pastePressed -> {
+            cutSelectionButton.setSelected(false);
+            copySelectionButton.setSelected(false);
+        });
+
+        //style and add elements to box
+        cutCopyBox.getChildren().addAll(cutCopyToggleBox,pasteButton);
+
+        pane0.setOnMousePressed(mousePressed -> {
+           drawOption = 11;
+        });
+        pane0.setContent(cutCopyBox);
         //=================================CREATING LOGIC FOR ACCORDION PANE===========================================
         //  0=nothing,1=line,2=colorGrabber,3=erase,4=rectangle,5=square,6=triangle,7=ellipse,8=circle
 
-        //upon first click in workspace, figure out what needs to be drawn
-        drawingCanvas.setOnMousePressed(mousePressed -> {
+        //get current tab and set drawingCanvas equal to canvas in current tab
+        //int currentTabIndex = tabPane.getSelectionModel().getSelectedIndex();
+        //Paint_newTab currentTab = (Paint_newTab) tabPane.getTabs().get(currentTabIndex);
+        //currentCanvas = currentTab.getCanvas();
+
+        //when tab pane is pressed, get selected tab, and set as current canvas
+        /*tabPane.setOnMousePressed(mousePressed -> {
+            currentTab = tabPane.getCurrentTab();
+            System.out.println(currentTab.getTabIndex());
+            currentCanvas = currentTab.getCanvas(); //something with this line is wrong
+        });*/
+/*
+        currentCanvas.setOnMousePressed(mousePressed -> {
 
             //Get first position
             x1 = mousePressed.getX();
             y1 = mousePressed.getY();
 
+            //if using selection tool and paste is selected
+            if(drawOption == 11) {
+                if (pasteButton.isSelected()) {
+                    gc = currentCanvas.getGraphicsContext2D();
+                    gc.drawImage(copiedImage, x1, y1);
+                    undoRedoStack.pushRedoCanvas(currentCanvas);
+                }
+            }
+
+            //push current canvas into undo stack
+            undoRedoStack.pushUndoCanvas(currentCanvas);
+
             //Get graphics context, line color, and line width
-            gc = drawingCanvas.getGraphicsContext2D();
+            gc = currentCanvas.getGraphicsContext2D();
             lineColor = colorPicker.getValue();
             gc.setStroke(lineColor);
 
             switch (drawOption) {
 
+                //case 0 = do nothing
+                case 0:
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
+                    });
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                    });
+                    break;
+
                 //Case 1 = draw line
                 case 1:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get slider value
-                    gc.setLineWidth(lineSlider.getValue());
+                    gc.setLineWidth(pane1.lineSlider.getValue());
 
                     //start path for straight line
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
                     //if straight is pressed
-                    if (lineStraightButton.isSelected()) {
-                        drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    if (pane1.lineStraightButton.isSelected()) {
+                        currentCanvas.setOnMouseDragged(mouseDragged -> {
                         });
                         //When released, get ending position and draw path
-                        drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                        currentCanvas.setOnMouseReleased(mouseReleased -> {
                             //solid straight line
-                            if (lineSdSwitch.solidButton.isSelected()) {
+                            if (pane1.lineSdSwitch.solidButton.isSelected()) {
                                 //set dashes to zero
                                 gc.setLineDashes();
-                            } else if (lineSdSwitch.dashedButton.isSelected()) {
+                            } else if (pane1.lineSdSwitch.dashedButton.isSelected()) {
                                 //dashed straight line
                                 gc.setLineDashes(30);
                             }
                             gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                             gc.stroke();
+                            undoRedoStack.pushRedoCanvas(currentCanvas);
                         });
                     }
 
-                    if (lineCurvedButton.isSelected()) {
+                    if (pane1.lineCurvedButton.isSelected()) {
                         //When released, get ending position and draw path
-                        drawingCanvas.setOnMouseDragged(mouseDragged -> {
-                            if (lineSdSwitch.solidButton.isSelected()) {
+                        currentCanvas.setOnMouseDragged(mouseDragged -> {
+                            if (pane1.lineSdSwitch.solidButton.isSelected()) {
                                 //set dashes to zero
                                 gc.setLineDashes();
-                            } else if (lineSdSwitch.dashedButton.isSelected()) {
+                            } else if (pane1.lineSdSwitch.dashedButton.isSelected()) {
                                 gc.setLineDashes(30);
                             }
                             gc.lineTo(mouseDragged.getX(), mouseDragged.getY());
                             gc.stroke();
                         });
-                        drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                        currentCanvas.setOnMouseReleased(mouseReleased -> {
                             gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                             gc.stroke();
+                            undoRedoStack.pushRedoCanvas(currentCanvas);
                         });
                     }
                     break;
-
 
                 //Case 2 = grab color
                 case 2:
@@ -441,15 +416,19 @@ public class Paint_accordionPane extends Accordion {
                     colorPicker.setValue(grabbedColor);
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
-                    break;
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
+                    currentCanvas.setOnMouseDragged(mouseDragged ->{
+                    });
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                    });
+                    break;
 
                 //Case 3 = erase
                 case 3:
 
                     //set default cursor
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //set color to white & dashes to null
                     gc.setStroke(Color.WHITE);
@@ -462,39 +441,39 @@ public class Paint_accordionPane extends Accordion {
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                         gc.lineTo(mouseDragged.getX(), mouseDragged.getY());
                         gc.stroke();
                     });
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
                         gc.lineTo(mouseReleased.getX(), mouseReleased.getY());
                         gc.stroke();
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
                     });
                     break;
 
-
-                    //Case 4 = rectangle
+                //Case 4 = rectangle
                 case 4:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get width
-                    gc.setLineWidth(rectangleSlider.getValue());
+                    gc.setLineWidth(pane4.rectangleSlider.getValue());
 
                     //start path for straight line
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                     });
 
                     //When released, get ending position and draw path
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
-                        if (rectangleSdSwitch.solidButton.isSelected()) {
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                        if (pane4.rectangleSdSwitch.solidButton.isSelected()) {
                             //set dashes to zero
                             gc.setLineDashes();
-                        } else if (rectangleSdSwitch.dashedButton.isSelected()) {
+                        } else if (pane4.rectangleSdSwitch.dashedButton.isSelected()) {
                             //dashed rectangle
                             gc.setLineDashes(30);
                         }
@@ -506,20 +485,20 @@ public class Paint_accordionPane extends Accordion {
                         double rectWidth = Math.abs(mouseReleased.getX() - x1);
                         double rectHeight = Math.abs(mouseReleased.getY() - y1);
 
-                        if(rectSharpButton.isSelected()) {
+                        if (pane4.rectSharpButton.isSelected()) {
                             gc.strokeRect(xf, yf, rectWidth, rectHeight);
-                        }else if(rectRoundedButton.isSelected()){
-                            gc.strokeRoundRect(xf, yf, rectWidth, rectHeight,rectWidth/5,rectHeight/5);
+                        } else if (pane4.rectRoundedButton.isSelected()) {
+                            gc.strokeRoundRect(xf, yf, rectWidth, rectHeight, rectWidth / 5, rectHeight / 5);
                         }
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
                     });
                     break;
 
-
-                    //Case 5 = square
+                //Case 5 = square
                 case 5:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get width
                     gc.setLineWidth(squareSlider.getValue());
@@ -528,12 +507,12 @@ public class Paint_accordionPane extends Accordion {
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                     });
 
                     //When released, get ending position and draw path
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
-                            //solid square
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                        //solid square
                         if (squareSdSwitch.solidButton.isSelected()) {
                             //set dashes to zero
                             gc.setLineDashes();
@@ -548,57 +527,58 @@ public class Paint_accordionPane extends Accordion {
                         //get height and width
                         double squareDim = Math.abs(mouseReleased.getX() - x1);
 
-                        if(squareSharpButton.isSelected()) {
+                        if (squareSharpButton.isSelected()) {
                             gc.strokeRect(xf, yf, squareDim, squareDim);
-                        }else if(squareRoundedButton.isSelected()){
-                            gc.strokeRoundRect(xf, yf, squareDim, squareDim,squareDim/5,squareDim/5);
+                        } else if (squareRoundedButton.isSelected()) {
+                            gc.strokeRoundRect(xf, yf, squareDim, squareDim, squareDim / 5, squareDim / 5);
                         }
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
                     });
                     break;
 
-
-                    //Case 6 = triangle
+                //Case 6 = triangle
                 case 6:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get width
-                    gc.setLineWidth(triangleSlider.getValue());
+                    gc.setLineWidth(pane6.triangleSlider.getValue());
 
                     //start path for straight line
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                     });
 
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
                         //Ensuring that rectangle is always drawn in direction user draws it
                         x2 = mouseReleased.getX();
                         y2 = mouseReleased.getY();
 
-                        if (triangleSdSwitch.solidButton.isSelected()) {
+                        if (pane6.triangleSdSwitch.solidButton.isSelected()) {
                             //set dashes to zero
                             gc.setLineDashes();
-                        } else if (triangleSdSwitch.dashedButton.isSelected()) {
+                        } else if (pane6.triangleSdSwitch.dashedButton.isSelected()) {
                             //dashed
                             gc.setLineDashes(30);
                         }
                         //making path for triangle
                         //Go from first spot, to right angle, to second spot, and complete
-                        gc.lineTo(x2,y1);
-                        gc.lineTo(x2,y2);
+                        gc.lineTo(x2, y1);
+                        gc.lineTo(x2, y2);
                         gc.closePath();
                         gc.stroke();
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
                     });
                     break;
 
-                    //Case 7 = ellipse
+                //Case 7 = ellipse
                 case 7:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get slider value
                     gc.setLineWidth(ellipseSlider.getValue());
@@ -607,10 +587,10 @@ public class Paint_accordionPane extends Accordion {
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                     });
 
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
                         //Ensuring that rectangle is always drawn in direction user draws it
                         x2 = mouseReleased.getX();
                         y2 = mouseReleased.getY();
@@ -628,11 +608,11 @@ public class Paint_accordionPane extends Accordion {
                         yf = Math.min(y2, y1);
 
                         //get length of line
-                        double lineLength = Math.sqrt(Math.pow((x2-x1),2) + Math.pow((y2-y1),2));
+                        double lineLength = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
 
                         //get angle of line
-                        double ellipseAngle = Math.toDegrees(Math.atan2(y2-y1, x2-x1));
-                        if (ellipseAngle<0){
+                        double ellipseAngle = Math.toDegrees(Math.atan2(y2 - y1, x2 - x1));
+                        if (ellipseAngle < 0) {
                             ellipseAngle += 360;
                         }
 
@@ -642,14 +622,15 @@ public class Paint_accordionPane extends Accordion {
 
                         //draw oval
                         gc.strokeOval(xf, yf, Math.abs(ellipseWidth), Math.abs(ellipseHeight));
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
                     });
                     break;
 
-                    //Case 8 = circle
+                //Case 8 = circle
                 case 8:
 
                     //set cursor back to normal
-                    drawingCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setCursor(Cursor.DEFAULT);
 
                     //get slider value
                     gc.setLineWidth(circleSlider.getValue());
@@ -658,10 +639,10 @@ public class Paint_accordionPane extends Accordion {
                     gc.beginPath();
                     gc.moveTo(x1, y1);
 
-                    drawingCanvas.setOnMouseDragged(mouseDragged -> {
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
                     });
 
-                    drawingCanvas.setOnMouseReleased(mouseReleased -> {
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
                         //Ensuring that rectangle is always drawn in direction user draws it
                         x2 = mouseReleased.getX();
                         y2 = mouseReleased.getY();
@@ -679,11 +660,11 @@ public class Paint_accordionPane extends Accordion {
                         yf = Math.min(y2, y1);
 
                         //get length of line
-                        double lineLength = Math.sqrt(Math.pow((x2-x1),2) + Math.pow((y2-y1),2));
+                        double lineLength = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
 
                         //get angle of line
-                        double circleAngle = Math.toDegrees(Math.atan2(y2-y1, x2-x1));
-                        if (circleAngle<0){
+                        double circleAngle = Math.toDegrees(Math.atan2(y2 - y1, x2 - x1));
+                        if (circleAngle < 0) {
                             circleAngle += 360;
                         }
 
@@ -693,12 +674,127 @@ public class Paint_accordionPane extends Accordion {
 
                         //draw oval
                         gc.strokeOval(xf, yf, Math.abs(circleWidth), Math.abs(circleWidth));
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
+                    });
+                    break;
+
+                //Case 9 = regular polygon
+                case 9:
+
+                    //set cursor back to normal
+                    currentCanvas.setCursor(Cursor.DEFAULT);
+
+                    //get slider value
+                    gc.setLineWidth(pane9.polygonSlider.getValue());
+
+                    //start path for straight line
+                    gc.beginPath();
+                    gc.moveTo(x1, y1);
+
+                    //get sides from field
+                    int polySides;
+                    polySides = Integer.parseInt(pane9.polygonSidesField.getText());
+
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
+                    });
+
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                        //Ensuring that rectangle is always drawn in direction user draws it
+                        x2 = mouseReleased.getX();
+                        y2 = mouseReleased.getY();
+
+                        if (pane9.polygonSdSwitch.solidButton.isSelected()) {
+                            //set dashes to zero
+                            gc.setLineDashes();
+                        } else if (pane9.polygonSdSwitch.dashedButton.isSelected()) {
+                            //dashed
+                            gc.setLineDashes(30);
+                        }
+
+                        //creating x and y array for points
+                        double[] xPoints = new double[polySides + 1];
+                        double[] yPoints = new double[polySides + 1];
+
+                        //get length of line
+                        double lineLength = Math.sqrt(Math.pow((x2 - x1), 2) + Math.pow((y2 - y1), 2));
+
+                        //start & end at theta=0, first point = x1+length, y1 (go straight to the right from 1st point)
+                        double xo = x1 + lineLength;
+                        xPoints[polySides - 1] = xo; //last element is first point
+                        double yo = y1;
+                        yPoints[polySides - 1] = yo; //last element is first point
+
+                        //go in circle grabbing n points at equal intervals and filling array
+                        double deltaTheta = (2 * Math.PI) / polySides;
+                        for (int i = 0; i < polySides; ++i) {
+                            double x = x1 + (lineLength * Math.cos(deltaTheta * i));
+                            double y = y1 - (lineLength * Math.sin(deltaTheta * i));
+                            xPoints[i] = x;
+                            yPoints[i] = y;
+                        }
+
+                        //draw polygon
+                        gc.strokePolygon(xPoints, yPoints, polySides);
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
+                    });
+                    break;
+
+                //option 10 = user-input text
+                case 10:
+
+                    //set cursor back to normal
+                    currentCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
+                    });
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                        //initiate string to be used for text
+                        Paint_inputTextPOPUP inputTextPOPUP = new Paint_inputTextPOPUP(x1, y1, gc);
+                        undoRedoStack.pushRedoCanvas(currentCanvas);
+                    });
+                    break;
+
+                    //option 11 = select area & move or copy it
+                case 11:
+
+                    //set cursor back to normal
+                    currentCanvas.setCursor(Cursor.DEFAULT);
+                    currentCanvas.setOnMouseDragged(mouseDragged -> {
+                        //drag to move selected area
+                    });
+                    currentCanvas.setOnMouseReleased(mouseReleased -> {
+                        //get second position
+                        x2 = mouseReleased.getX();
+                        y2 = mouseReleased.getY();
+                        //get position of area
+                        double selectionX = Math.min(x1,x2);
+                        double selectionY = Math.min(y1,y2);
+
+                        //get width and height of area
+                        double selectionWidth = Math.abs(x1-x2);
+                        double selectionHeight = Math.abs(y1-y2);
+
+                        //if paste button isn't selected, get image
+                        if (!pasteButton.isSelected()){
+                            //get image of selected area
+                            WritableImage selectedImage = new WritableImage(currentCanvas.snapshot(null, null).getPixelReader(), (int) selectionX, (int) selectionY, (int) selectionWidth, (int) selectionHeight);
+                            copiedImage = selectedImage;
+
+                            if (cutSelectionButton.isSelected()) {
+                                //clear area selected if cutting
+                                gc.setFill(Color.WHITE);
+                                gc.fillRect(selectionX,selectionY,selectionWidth,selectionHeight);
+                            }
+                        }
                     });
                     break;
             }
-        });
-
+        });*/
         //Add panes to accordion
-        super.getPanes().addAll(pane1, pane2, pane3, pane4, pane5, pane6, pane7, pane8);
+        super.getPanes().addAll(pane0, pane1, pane2, pane3, pane4, pane5, pane6, pane7, pane8, pane9, pane10);
     }
+
+    public int getDrawOption(){
+        return drawOption;
+    }
+
 }

@@ -9,14 +9,16 @@ public class Pain_t extends Application{
         /*
          TODO Auto-generated method stub
             -Blank canvas upon startup (DONE)
-            -Clear canvas option w/ "are you sure?" check
+            -Clear canvas option w/ "are you sure?" check (DONE)
             -Additional shape of my choice (DONE)
-            -Eraser tool
-            -Draw regular poly with n sides
-            -Copy and paste piece of image
-            -Select and move piece of image
-            -Allow text with user-typed input
-            -Undo and Redo using stack
+            -Eraser tool (DONE)
+            -Draw regular poly with n sides (DONE)
+            -Copy and paste piece of image (DONE)
+            -Select and move piece of image (DONE)
+            -Allow text with user-typed input (DONE - needs more options)
+            -UNDO AND REDO USING STACK(S) (DONE - degrades image)
+            -TABS (make save as dialog come up on blank) (DONE) (NEED TO DRAW ON BOTH, ONLY CAN DRAW ON 1st, Save works on most recent, Save as works on first)
+            -BONUS: rounded square and rect, blank on new, canvas fills when growing
 
             NOTES:
             Replace accordion with just icons at some point
@@ -25,6 +27,7 @@ public class Pain_t extends Application{
             Figure out how to show slightly transparent version of shape when dragging mouse
             Currently, opening new image deletes previous tabs. Need to save. Also need to close only active tab on exit
             To do above, make new canvas each time a new tab is opened.
+            Fill extended area with white when extending canvas
         */
 
         //Create paint window
