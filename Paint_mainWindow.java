@@ -4,7 +4,10 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
-
+import java.text.SimpleDateFormat;
+import java.util.Timer;
+import javafx.application.Platform;
+import javafx.embed.swing.JFXPanel;
 import javafx.embed.swing.SwingFXUtils;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
@@ -14,15 +17,24 @@ import javafx.scene.control.*;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
+import javafx.scene.text.Font;
+import javafx.scene.text.FontPosture;
 import javafx.scene.text.Text;
 import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.scene.image.Image;
 import javafx.scene.image.ImageView;
-
 import javax.imageio.ImageIO;
 import java.io.IOException;
+import java.util.TimerTask;
+
+/**
+ *
+ * Paint_mainWindow adds content to main window and arranges panes. Contains file menu functions
+ * Author: Trent Miller
+ *
+ */
 
 public class Paint_mainWindow {
 
@@ -42,12 +54,18 @@ public class Paint_mainWindow {
     GraphicsContext gc;
 
     //Creating Vbox to contain accordion and go into scroll pane
-    VBox toolPane = new VBox();
+    VBox leftPane = new VBox();
     //Create scroll pane so tool pane can scroll if needed (when window resized)
-    ScrollPane toolScrollPane = new ScrollPane(toolPane);
+    ScrollPane leftScrollPane = new ScrollPane();
 
     //Create accordionPane
     Paint_accordionPane accordionPane = new Paint_accordionPane();
+
+    //Create int for time - starts at 15 mins (900 s)
+    int secondsToAutoSave = 10;
+
+    //Autosave Timer
+    Label timerLabel = new Label("Autosaving in: "+secondsToAutoSave/60+":"+secondsToAutoSave%60);
 
     public Paint_mainWindow(Stage stage) {
 
@@ -62,8 +80,8 @@ public class Paint_mainWindow {
         //Start blank canvas and workspace
         Paint_drawingCanvas startCanvas = new Paint_drawingCanvas(accordionPane);
         ScrollPane startWorkspace = new ScrollPane(startCanvas);
-        toolScrollPane.hbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.NEVER);
-        toolScrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
+        leftScrollPane.hbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.NEVER);
+        leftScrollPane.vbarPolicyProperty().setValue(ScrollPane.ScrollBarPolicy.AS_NEEDED);
 
         //first tab upon open
         Paint_newTab startTab = new Paint_newTab("Blank", accordionPane);
@@ -72,9 +90,7 @@ public class Paint_mainWindow {
         //Set workspace content of tab and canvas content of workspace
         startTab.setWorkspace(startWorkspace);
         startTab.setCanvas(startCanvas);
-        //add accordion of first tab to toolPane
-        toolPane.getChildren().addAll(accordionPane);
-        toolPane.setPrefWidth(200);
+
         //setting workspace content to white blank square upon startup
         int defaultHeightAndWidth = 800;
         startTab.setCanvasWidthAndHeight(defaultHeightAndWidth, defaultHeightAndWidth);
@@ -82,15 +98,30 @@ public class Paint_mainWindow {
         gc.setFill(Color.WHITE);
         gc.fillRect(0,0,defaultHeightAndWidth,defaultHeightAndWidth);
 
-        //set current canvas as start canvas
+        //set current canvas as start canvas (TEMP - for menu actions)
         currentCanvas = startTab.getCanvas();
+
+        //upon startup, show auto save timer
+        //make timer font italic
+        timerLabel.setFont(Font.font("Verdana", FontPosture.ITALIC, 10));
+        //create small box for autosave timer
+        HBox timerBox = new HBox();
+        timerBox.getChildren().addAll(timerLabel);
+        timerBox.setAlignment(Pos.CENTER);
+
+        //add items to left Pane
+        leftPane.getChildren().addAll(accordionPane, timerBox);
+        //add leftPane to scrollPane
+        leftPane.setPrefWidth(200);
+        leftPane.setSpacing(10);
+        leftScrollPane.setContent(leftPane);
 
         //Building & Sizing window
         BorderPane root = new BorderPane();
         Scene scene = new Scene(root);
         root.setTop(menubar);
         root.setCenter(tabPane);
-        root.setLeft(toolScrollPane);
+        root.setLeft(leftScrollPane);
 
         //File Menu
         Menu FileMenu = new Menu("_File");
@@ -153,32 +184,101 @@ public class Paint_mainWindow {
 
         //===============Save===========================================
         filemenu3.setOnAction(event -> {
-            WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
-            currentCanvas.snapshot(null, writableImage);
-            RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
-            try {
-                //jpg is placeholder here and at smart save, can't get saveType to work
-                ImageIO.write(renderedImage, "png", saveFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+
+            //if saveFile (filepath) is null, go to save as
+            if(saveFile==null){
+                //Open save as dialog
+                FileChooser saveAs = new FileChooser();
+                saveAs.getExtensionFilters().addAll(new ExtensionFilter("All Files", "*.*"), new ExtensionFilter("BMP File", "*.bmp"), new ExtensionFilter("JPEG Image", "*.jpg"), new ExtensionFilter("PNG File", "*.png"), new ExtensionFilter("SVG File", "*.svg"));
+                File outputFile = saveAs.showSaveDialog(stage);
+                String saveAsType = outputFile.getPath().substring(outputFile.toString().lastIndexOf(".") + 1);
+                System.out.println(saveAsType);
+                //if image save type is svg, warn user of potential losses
+                if(saveAsType.equals("svg")){
+                    Paint_saveLossWarningPOPUP lossWarningPOPUP = new Paint_saveLossWarningPOPUP();
+                    //if save is pressed, save as normal
+                    lossWarningPOPUP.yesButton.setOnMousePressed(savePressed ->{
+                        WritableImage writableImage1 = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                        currentCanvas.snapshot(null, writableImage1);
+                        RenderedImage renderedImage1 = SwingFXUtils.fromFXImage(writableImage1, null);
+                        try {
+                            ImageIO.write(renderedImage1, "png", outputFile);
+                        } catch (IOException e) {
+                            throw new RuntimeException(e);
+                        }
+                        lossWarningPOPUP.lossWarningStage.close(); //close popup
+                        saveFile = outputFile; //set savefile as path selected in save dialog
+                    });
+                    //if cancel is pressed
+                    lossWarningPOPUP.noButton.setOnMousePressed(cancelPressed -> {
+                        lossWarningPOPUP.lossWarningStage.close();
+                    });
+                }else{
+                    WritableImage writableImage2 = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                    currentCanvas.snapshot(null, writableImage2);
+                    RenderedImage renderedImage2 = SwingFXUtils.fromFXImage(writableImage2, null);
+                    try {
+                        ImageIO.write(renderedImage2, "png", outputFile);
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    //set saveFile as outputFile
+                    saveFile = outputFile;
+                }
+            }else {
+                //else, save as normal
+                WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                currentCanvas.snapshot(null, writableImage);
+                RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                try {
+                    //jpg is placeholder here and at smart save, can't get saveType to work
+                    ImageIO.write(renderedImage, "png", saveFile);
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
+            secondsToAutoSave = 900; //reset timer
         });
 
         //===============Save As========================================
         filemenu4.setOnAction(event -> {
             FileChooser saveAs = new FileChooser();
-            saveAs.getExtensionFilters().addAll(new ExtensionFilter("All Files", "*.*"), new ExtensionFilter("BMP File", "*.bmp"), new ExtensionFilter("JPEG Image", "*.jpg"), new ExtensionFilter("PNG File", "*.png"));
+            saveAs.getExtensionFilters().addAll(new ExtensionFilter("All Files", "*.*"), new ExtensionFilter("BMP File", "*.bmp"), new ExtensionFilter("JPEG Image", "*.jpg"), new ExtensionFilter("PNG File", "*.png"), new ExtensionFilter("SVG File", "*.svg"));
             File outputFile = saveAs.showSaveDialog(stage);
-            //BufferedImage bImage = SwingFXUtils.fromFXImage(imageView.getImage(), null);
-            WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
-            currentCanvas.snapshot(null, writableImage);
-            RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
-            try {
-                ImageIO.write(renderedImage, "png", outputFile);
-            } catch (IOException e) {
-                throw new RuntimeException(e);
+            String saveAsType = outputFile.getPath().substring(outputFile.toString().lastIndexOf(".") + 1);
+            System.out.println(saveAsType);
+            //if image save type is svg, warn user of potential losses
+            if(saveAsType.equals("svg")){
+                Paint_saveLossWarningPOPUP lossWarningPOPUP = new Paint_saveLossWarningPOPUP();
+                //if save is pressed
+                lossWarningPOPUP.yesButton.setOnMousePressed(savePressed ->{
+                    try {
+                        WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                        currentCanvas.snapshot(null, writableImage);
+                        RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                        ImageIO.write(renderedImage, "png", outputFile);
+                        secondsToAutoSave = 900; //reset timer
+                        lossWarningPOPUP.lossWarningStage.close();
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    saveFile = outputFile;
+                });
+                //if cancel is pressed
+                lossWarningPOPUP.noButton.setOnMousePressed(cancelPressed -> {
+                   lossWarningPOPUP.lossWarningStage.close();
+                });
+            }else{
+                try {
+                    WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                    currentCanvas.snapshot(null, writableImage);
+                    RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                    ImageIO.write(renderedImage, "svg", outputFile);
+                    secondsToAutoSave = 900; //reset timer
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
             }
-            saveFile = outputFile;
         });
 
         //===============Exit===========================================
@@ -196,7 +296,6 @@ public class Paint_mainWindow {
                     RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
                     try {
                         ImageIO.write(renderedImage, "png", saveFile);
-                        System.out.println("save!!");
                     } catch (IOException e) {
                         throw new RuntimeException(e);
                     }
@@ -376,6 +475,61 @@ public class Paint_mainWindow {
             resizeImageStage.show();
         });
 
+        //hide/show autosave timer
+        Menu OptionMenu4 = new Menu("Autosave Timer");
+        CheckMenuItem showAutoSaveTimer = new CheckMenuItem("Show");
+        //by default, show is selected
+        showAutoSaveTimer.setSelected(true);
+        CheckMenuItem hideAutoSaveTimer = new CheckMenuItem("Hide");
+        //when show is pressed, deselect hide and show autosave box
+        showAutoSaveTimer.setOnAction(eventHandler ->{
+           hideAutoSaveTimer.setSelected(false);
+           leftPane.getChildren().add(timerBox);
+        });
+        //when hide is pressed, deselect show and remove autosave box
+        hideAutoSaveTimer.setOnAction(eventHandler ->{
+            showAutoSaveTimer.setSelected(false);
+            leftPane.getChildren().remove(timerBox);
+        });
+        //add menuitems to auto save timer submenu
+        OptionMenu4.getItems().addAll(showAutoSaveTimer,hideAutoSaveTimer);
+
+        //Create autosave timer and task
+        Timer autoSaveTimer = new Timer();
+        //update timer value every second
+        autoSaveTimer.scheduleAtFixedRate(new TimerTask() {
+            @Override
+            public void run() {
+                //subtract off one from count every second & change label
+                secondsToAutoSave = secondsToAutoSave - 1;
+                //formatting seconds to always have two digits
+                String timerRemainder = String.format("%02d", secondsToAutoSave%60);
+                new JFXPanel();
+                Platform.runLater(() -> timerLabel.setText("Autosaving in: "+secondsToAutoSave/60+":"+timerRemainder));
+
+                //when 15 min is reached, save canvas and reset timer
+                if(secondsToAutoSave==0){
+                    //resetting timer
+                    secondsToAutoSave = 900; //15 min = 900 s
+                    //saving current canvas
+                    new JFXPanel();
+                    Platform.runLater(() ->{
+                    WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                    currentCanvas.snapshot(null, writableImage);
+                    RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                    //make save file path
+                        String timeStamp = new SimpleDateFormat("MM.dd.yyyy.HH.mm.ss").format(new java.util.Date());
+                        timeStamp = "C:\\\\Users\\\\User\\\\Pictures\\\\" +"AUTOSAVE."+ timeStamp+ ".png";
+                        try {
+                        //jpg is placeholder here and at smart save, can't get saveType to work
+                        ImageIO.write(renderedImage, "png", new File(timeStamp));
+                    } catch (IOException e) {
+                        throw new RuntimeException(e);
+                    }
+                    });
+                }
+            }
+        }, 1000, 1000); //1k = 1 s in ms
 
         //Help Menu
         Menu HelpMenu = new Menu("Help");
@@ -384,9 +538,9 @@ public class Paint_mainWindow {
         MenuItem helpmenu2 = new MenuItem("About");
 
         //Adding items to their respective menus
-        EditMenu.getItems().addAll(EditMenu1, EditMenu2, EditMenu3);
-        FileMenu.getItems().addAll(filemenu1, filemenu2, filemenu3, filemenu4, filemenu5);
-        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu2, OptionsMenu3);
+        FileMenu.getItems().addAll(filemenu1, filemenu2, new SeparatorMenuItem(), filemenu3, filemenu4, new SeparatorMenuItem(), filemenu5);
+        EditMenu.getItems().addAll(EditMenu1, EditMenu2, new SeparatorMenuItem(), EditMenu3);
+        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu2, new SeparatorMenuItem(), OptionsMenu3, new SeparatorMenuItem(), OptionMenu4);
         HelpMenu.getItems().addAll(helpmenu1, helpmenu2);
         //Adding menus to bar
         menubar.getMenus().addAll(FileMenu, EditMenu, OptionsMenu, HelpMenu);
@@ -397,8 +551,13 @@ public class Paint_mainWindow {
         stage.setMaximized(true);
         stage.setTitle("Paint");
 
+        //stop execution of code when window is closed
+        stage.setOnCloseRequest(stageClosed -> {
+            System.exit(0);
+        });
 
         //Showing Main Window
         stage.show();
+
     }
 }

@@ -10,7 +10,14 @@ import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 
-//ONE ACCORDION PANE CONTROLS ONE TAB
+/**
+ *
+ *Paint_accordionPane adds content/options to tool Panes & sets drawOption for Paint_drawingCanvas
+ *Class extends Accordion, which is a type of Node
+ *
+ *Author: Trent Miller
+ *
+*/
 
 public class Paint_accordionPane extends Accordion {
 
@@ -39,11 +46,6 @@ public class Paint_accordionPane extends Accordion {
     ToggleButton copySelectionButton = new ToggleButton("Copy");
     ToggleButton cutSelectionButton = new ToggleButton("Cut");
     ToggleButton pasteButton = new ToggleButton("Paste");
-
-    //tab that accordion Pane controls
-    Paint_newTab currentTab;
-
-    Image copiedImage;
 
     //initiate tool panes
     Paint_lineToolPane pane1 = new Paint_lineToolPane();
@@ -169,9 +171,6 @@ public class Paint_accordionPane extends Accordion {
         squareRoundedButton.setToggleGroup(squareStraightRoundedGroup);
         squareSharpButton.setToggleGroup(squareStraightRoundedGroup);
         squareStraightRoundedSwitch.getChildren().addAll(squareSharpButton, squareRoundedButton);
-
-        //Making Hbox for dotted/dashed switch & draw button
-
 
         //Putting slider display in vbox in linePane
         VBox squarePane = new VBox();

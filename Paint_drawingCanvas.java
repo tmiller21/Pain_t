@@ -1,5 +1,4 @@
 package com.example.paint;
-
 import javafx.scene.Cursor;
 import javafx.scene.canvas.Canvas;
 import javafx.scene.canvas.GraphicsContext;
@@ -9,6 +8,13 @@ import javafx.scene.paint.Color;
 import javafx.scene.robot.Robot;
 
 import java.util.Stack;
+
+/**
+ * Paint_drawingCanvas is an extension of canvas that contains the logic for drawing on it
+ * Canvas is a node
+ *
+ * Author: Trent Miller
+ */
 
 public class Paint_drawingCanvas extends Canvas {
 
@@ -42,7 +48,9 @@ public class Paint_drawingCanvas extends Canvas {
 
         //get draw option
         drawOption = accordionPane.getDrawOption();
-        System.out.println("getDrawOption() = " + drawOption);
+
+        //get graphics context
+        gc = this.getGraphicsContext2D();
 
         //if using selection tool and paste is selected
         if(drawOption == 11) {
@@ -59,8 +67,7 @@ public class Paint_drawingCanvas extends Canvas {
         WritableImage undoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
         undoStack.push(undoImage);
 
-        //Get graphics context, line color, and line width
-        gc = this.getGraphicsContext2D();
+        //set line color
         lineColor = accordionPane.colorPicker.getValue();
         gc.setStroke(lineColor);
 
@@ -532,5 +539,5 @@ public class Paint_drawingCanvas extends Canvas {
                 });
                 break;
         }
-}
+    }
 }
