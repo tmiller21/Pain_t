@@ -21,7 +21,7 @@ public class Paint_rectangleToolPane extends TitledPane {
     Paint_solidDashedSwitch rectangleSdSwitch = new Paint_solidDashedSwitch();
 
     public Paint_rectangleToolPane(){
-        this.setText("Rectangle");
+        this.setText("Rectangle  ▭");
         rectangleSlider.setMajorTickUnit(18);
         rectangleSlider.setMinorTickCount(9);
         rectangleSlider.setBlockIncrement(1);

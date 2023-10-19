@@ -19,7 +19,7 @@ public class Paint_lineToolPane extends TitledPane {
     Paint_solidDashedSwitch lineSdSwitch = new Paint_solidDashedSwitch();
 
     public Paint_lineToolPane(){
-        this.setText("Line");
+        this.setText("Line  \uD83D\uDD8A");
         lineSlider.setMajorTickUnit(18);
         lineSlider.setMinorTickCount(9);
         lineSlider.setBlockIncrement(1);

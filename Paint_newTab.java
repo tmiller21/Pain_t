@@ -48,4 +48,6 @@ public class Paint_newTab extends Tab {
 
     public int getTabIndex(){return tabIndex;}
 
+    public String getTabTitle(){return this.getText();}
+
 }

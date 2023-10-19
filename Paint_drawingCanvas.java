@@ -6,6 +6,8 @@ import javafx.scene.image.Image;
 import javafx.scene.image.WritableImage;
 import javafx.scene.paint.Color;
 import javafx.scene.robot.Robot;
+import javafx.scene.transform.Rotate;
+import javafx.scene.transform.Translate;
 
 import java.util.Stack;
 
@@ -19,6 +21,7 @@ import java.util.Stack;
 public class Paint_drawingCanvas extends Canvas {
 
     double x1, y1, x2, y2, xf, yf;
+    double xOnCopyRelease, yOnCopyRelease;
     Image copiedImage;
     Color lineColor;
     GraphicsContext gc;
@@ -52,17 +55,6 @@ public class Paint_drawingCanvas extends Canvas {
         //get graphics context
         gc = this.getGraphicsContext2D();
 
-        //if using selection tool and paste is selected
-        if(drawOption == 11) {
-            if (accordionPane.pasteButton.isSelected()) {
-                gc = this.getGraphicsContext2D();
-                gc.drawImage(copiedImage, x1, y1);
-                //take snapshot and push into redo stack
-                WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
-                redoStack.push(redoImage);
-            }
-        }
-
         //push current snapshot into undo stack
         WritableImage undoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
         undoStack.push(undoImage);
@@ -70,6 +62,32 @@ public class Paint_drawingCanvas extends Canvas {
         //set line color
         lineColor = accordionPane.colorPicker.getValue();
         gc.setStroke(lineColor);
+
+        //if using selection tool and paste is selected
+        if(drawOption == 11) {
+            if (accordionPane.pasteButton.isSelected()) {
+                gc = this.getGraphicsContext2D();
+                //first, get desired rotation from text field
+                double selectionRotation = Double.parseDouble(accordionPane.selectionRotationField.getText());
+                //find upper left point
+                double selectionPivotPointX = Math.min(x1, xOnCopyRelease);
+                double selectionPivotPointY = Math.min(y1, yOnCopyRelease);
+                //create Rotate object about center point @ desired angle
+                Rotate rotate = new Rotate();
+                //rotate @ desired angle about center point
+                rotate.setAngle(selectionRotation);
+                rotate.setPivotX(selectionPivotPointX+(copiedImage.getWidth()/2));
+                rotate.setPivotY(selectionPivotPointY+(copiedImage.getHeight()/2));
+
+                //set transform of gc
+                gc.setTransform(rotate.getMxx(),rotate.getMyx(),rotate.getMxy(),rotate.getMyy(),rotate.getTx(),rotate.getTy());
+                //draw rotated image
+                gc.drawImage(copiedImage, x1, y1);
+                //take snapshot and push into redo stack
+                WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
+                redoStack.push(redoImage);
+            }
+        }
 
         switch(drawOption){
 
@@ -495,7 +513,7 @@ public class Paint_drawingCanvas extends Canvas {
                 });
                 this.setOnMouseReleased(mouseReleased -> {
                     //initiate string to be used for text
-                    Paint_inputTextPOPUP inputTextPOPUP = new Paint_inputTextPOPUP(x1, y1, gc);
+                    Paint_POPUPinputText inputTextPOPUP = new Paint_POPUPinputText(x1, y1, gc);
                     //take snapshot and push into redo stack
                     WritableImage redoImage = new WritableImage(this.snapshot(null,null).getPixelReader(), 0,0,(int)this.getWidth(),(int)this.getHeight());
                     redoStack.push(redoImage);
@@ -508,8 +526,8 @@ public class Paint_drawingCanvas extends Canvas {
                 //set cursor back to normal
                 this.setCursor(Cursor.DEFAULT);
                 this.setOnMouseDragged(mouseDragged -> {
-                    //drag to move selected area
                 });
+
                 this.setOnMouseReleased(mouseReleased -> {
                     //get second position
                     x2 = mouseReleased.getX();
@@ -524,9 +542,10 @@ public class Paint_drawingCanvas extends Canvas {
 
                     //if paste button isn't selected, get image
                     if (!accordionPane.pasteButton.isSelected()){
+                        xOnCopyRelease = x2;
+                        yOnCopyRelease = y2;
                         //get image of selected area
                         copiedImage = new WritableImage(this.snapshot(null, null).getPixelReader(), (int) selectionX, (int) selectionY, (int) selectionWidth, (int) selectionHeight);
-
                         if (accordionPane.cutSelectionButton.isSelected()) {
                             //clear area selected if cutting
                             gc.setFill(Color.WHITE);
@@ -539,5 +558,22 @@ public class Paint_drawingCanvas extends Canvas {
                 });
                 break;
         }
+
     }
+
+    public void rotateCanvas(int angle){
+        //rotate about midpoint
+        Rotate r = new Rotate(angle,this.getWidth()/2,this.getHeight()/2);
+        this.getTransforms().add(r);
+        //find difference between width and height & translate picture appropriately to fit & be at (0,0)
+        double heightWidthDiff = Math.abs(this.getHeight()-this.getWidth());
+        if(this.getHeight()>this.getWidth()){
+            Translate t = new Translate(heightWidthDiff/2,-heightWidthDiff/2);
+            this.getTransforms().add(t);
+        }else{
+            Translate t = new Translate(-heightWidthDiff/2,heightWidthDiff/2);
+            this.getTransforms().add(t);
+        }
+    }
+
 }

@@ -17,7 +17,7 @@ public class Paint_triangleToolPane extends TitledPane {
     Paint_solidDashedSwitch triangleSdSwitch = new Paint_solidDashedSwitch();
 
     public Paint_triangleToolPane(){
-        this.setText("Triangle");
+        this.setText("Triangle  ◺");
         triangleSlider.setMajorTickUnit(18);
         triangleSlider.setMinorTickCount(9);
         triangleSlider.setBlockIncrement(1);

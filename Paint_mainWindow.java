@@ -1,9 +1,15 @@
 package com.example.paint;
+import java.awt.*;
+import java.awt.event.ActionListener;
 import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileNotFoundException;
 import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.nio.file.StandardOpenOption;
 import java.text.SimpleDateFormat;
 import java.util.Timer;
 import javafx.application.Platform;
@@ -14,6 +20,13 @@ import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.canvas.GraphicsContext;
 import javafx.scene.control.*;
+import javafx.scene.control.Button;
+import javafx.scene.control.Label;
+import javafx.scene.control.Menu;
+import javafx.scene.control.MenuBar;
+import javafx.scene.control.MenuItem;
+import javafx.scene.control.ScrollPane;
+import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -24,7 +37,7 @@ import javafx.stage.FileChooser;
 import javafx.stage.Stage;
 import javafx.stage.FileChooser.ExtensionFilter;
 import javafx.scene.image.Image;
-import javafx.scene.image.ImageView;
+
 import javax.imageio.ImageIO;
 import java.io.IOException;
 import java.util.TimerTask;
@@ -41,6 +54,10 @@ public class Paint_mainWindow {
     File saveFile;
     String imageType;
     Image image;
+
+    //Get path & empty string for event logger
+    Path eventLoggerPath = Paths.get("C:\\\\Users\\\\User\\\\Desktop\\\\Coding Projects\\\\Paint\\\\Paint_EventLogger.txt");
+    String logMessage;
 
     double imageWidth;
     double imageHeight;
@@ -62,20 +79,54 @@ public class Paint_mainWindow {
     Paint_accordionPane accordionPane = new Paint_accordionPane();
 
     //Create int for time - starts at 15 mins (900 s)
-    int secondsToAutoSave = 10;
+    int secondsToAutoSave = 60;
 
     //Autosave Timer
     Label timerLabel = new Label("Autosaving in: "+secondsToAutoSave/60+":"+secondsToAutoSave%60);
 
+    //Initialize tray icon
+    TrayIcon trayIcon = null;
+
     public Paint_mainWindow(Stage stage) {
+
+        //log that program has been started
+        String timeStamp = new SimpleDateFormat("MM.dd.yyyy.HH.mm.ss").format(new java.util.Date());
+        logMessage = "\n\n-----------------------------------------------------------\n" + timeStamp + " SOFWARE STARTED";
+        try {
+            Files.write(eventLoggerPath, logMessage.getBytes(), StandardOpenOption.APPEND);
+        } catch (IOException ex) {
+            throw new RuntimeException(ex);
+        }
+
+        //Create tray icon
+        try {
+            try {
+                java.awt.Image trayIconImage = ImageIO.read(getClass().getClassLoader().getResource("trayIcon.png"));
+                trayIcon = new TrayIcon(trayIconImage, "Paint");
+                SystemTray.getSystemTray().add(trayIcon);
+            } catch(IOException e){
+                e.printStackTrace();
+            }
+        }catch(AWTException e){
+            e.printStackTrace();
+        }
+
+        //display message when software is opened
+        if(trayIcon!=null) {
+            trayIcon.displayMessage("Software Opened", "Pain(t) has been opened", TrayIcon.MessageType.INFO);
+        }
+
+        //add action listener to icon
+        trayIcon.addActionListener(ActionListener ->{
+            if(trayIcon!=null) {
+                trayIcon.displayMessage("Apologies!", "What were you expecting?", TrayIcon.MessageType.ERROR);
+            }
+        });
 
         //Creating menu bar
         MenuBar menubar = new MenuBar();
         menubar.setPrefHeight(25);
         menubar.setPrefWidth(Double.MAX_VALUE);
-
-        //Creating an imageView to save file path and file type
-        ImageView imageView = new ImageView();
 
         //Start blank canvas and workspace
         Paint_drawingCanvas startCanvas = new Paint_drawingCanvas(accordionPane);
@@ -137,8 +188,6 @@ public class Paint_mainWindow {
         FileChooser fileChooser = new FileChooser();
         fileChooser.setTitle("Open Image");
         fileChooser.getExtensionFilters().addAll(new ExtensionFilter("All Files", "*.*"), new ExtensionFilter("BMP File", "*.bmp"), new ExtensionFilter("JPEG Image", "*.jpg"), new ExtensionFilter("PNG File", "*.png"));
-        //Setting the image view parameters
-        imageView.setPreserveRatio(true);
         //Handling the event of the Open Image
         filemenu2.setOnAction(event -> {
             try {
@@ -195,7 +244,7 @@ public class Paint_mainWindow {
                 System.out.println(saveAsType);
                 //if image save type is svg, warn user of potential losses
                 if(saveAsType.equals("svg")){
-                    Paint_saveLossWarningPOPUP lossWarningPOPUP = new Paint_saveLossWarningPOPUP();
+                    Paint_POPUPsaveLossWarning lossWarningPOPUP = new Paint_POPUPsaveLossWarning();
                     //if save is pressed, save as normal
                     lossWarningPOPUP.yesButton.setOnMousePressed(savePressed ->{
                         WritableImage writableImage1 = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
@@ -249,7 +298,7 @@ public class Paint_mainWindow {
             System.out.println(saveAsType);
             //if image save type is svg, warn user of potential losses
             if(saveAsType.equals("svg")){
-                Paint_saveLossWarningPOPUP lossWarningPOPUP = new Paint_saveLossWarningPOPUP();
+                Paint_POPUPsaveLossWarning lossWarningPOPUP = new Paint_POPUPsaveLossWarning();
                 //if save is pressed
                 lossWarningPOPUP.yesButton.setOnMousePressed(savePressed ->{
                     try {
@@ -285,7 +334,7 @@ public class Paint_mainWindow {
         //Handling the event of the exit menu item
         filemenu5.setOnAction(event ->{
 
-            Paint_smartSavePOPUP smartSave = new Paint_smartSavePOPUP();
+            Paint_POPUPsmartSave smartSave = new Paint_POPUPsmartSave();
 
             //get graphics context
             gc = currentCanvas.getGraphicsContext2D();
@@ -325,7 +374,7 @@ public class Paint_mainWindow {
         //Edit Menu
         Menu EditMenu = new Menu("_Edit");
         //Options on the edit menu
-        MenuItem EditMenu1 = new MenuItem("_Undo");
+        MenuItem EditMenu1 = new MenuItem("_Undo  ⤺");
         EditMenu1.setOnAction(undoPressed ->{
             //before undoing, put current canvas in redo stack
             WritableImage redoImage = new WritableImage(startCanvas.snapshot(null,null).getPixelReader(), 0,0,(int)startTab.drawingCanvas.getWidth(),(int)startTab.drawingCanvas.getHeight());
@@ -337,7 +386,7 @@ public class Paint_mainWindow {
             gc.drawImage(drawUndoImage, 0, 0);
         });
 
-        MenuItem EditMenu2 = new MenuItem("_Redo");
+        MenuItem EditMenu2 = new MenuItem("_Redo   ⤻");
         EditMenu2.setOnAction(undoPressed ->{
             //before redoing, put current canvas in undo stack
             WritableImage undoImage = new WritableImage(startCanvas.snapshot(null,null).getPixelReader(), 0,0,(int)startTab.drawingCanvas.getWidth(),(int)startTab.drawingCanvas.getHeight());
@@ -349,16 +398,16 @@ public class Paint_mainWindow {
             gc.drawImage(drawRedoImage, 0, 0);
         });
 
-        MenuItem EditMenu3 = new MenuItem("Paste");
+        MenuItem EditMenu3 = new MenuItem("_Paste   \uD83D\uDCCB");
 
         //Options menu
         Menu OptionsMenu = new Menu("Options");
 
-        //Making image size option resize canvas
-        MenuItem OptionsMenu1 = new MenuItem("Resize Canvas");
+        //Making option to crop canvas
+        MenuItem OptionsMenu1 = new MenuItem("Crop Canvas");
         OptionsMenu1.setOnAction(eventHandler -> {
             gc = currentCanvas.getGraphicsContext2D();
-            Paint_resizeCanvasPOPUP resizeCanvasPOPUP = new Paint_resizeCanvasPOPUP(currentCanvas);
+            Paint_POPUPcropCanvas cropCanvasPOPUP = new Paint_POPUPcropCanvas(currentCanvas);
         });
 
         //clear canvas option
@@ -409,8 +458,8 @@ public class Paint_mainWindow {
         });
 
 
-        //Resize image option
-        MenuItem OptionsMenu3 = new MenuItem("Resize Image");
+        //Resize canvas option (NEEDS TO KEEP ALL CONTENT AND RESIZE)
+        MenuItem OptionsMenu3 = new MenuItem("Resize Canvas");
         OptionsMenu3.setOnAction(eventHandler -> {
             //Create new stage and scene for text field
             Stage resizeImageStage = new Stage();
@@ -500,36 +549,93 @@ public class Paint_mainWindow {
         autoSaveTimer.scheduleAtFixedRate(new TimerTask() {
             @Override
             public void run() {
+                //Get time stamp each second
+                String timeStamp = new SimpleDateFormat("MM.dd.yyyy.HH.mm.ss").format(new java.util.Date());
                 //subtract off one from count every second & change label
                 secondsToAutoSave = secondsToAutoSave - 1;
                 //formatting seconds to always have two digits
                 String timerRemainder = String.format("%02d", secondsToAutoSave%60);
                 new JFXPanel();
-                Platform.runLater(() -> timerLabel.setText("Autosaving in: "+secondsToAutoSave/60+":"+timerRemainder));
-
+                Platform.runLater(() -> timerLabel.setText("Autosaving in: "+secondsToAutoSave/60+":"+timerRemainder+" ⏱"));
                 //when 15 min is reached, save canvas and reset timer
                 if(secondsToAutoSave==0){
                     //resetting timer
                     secondsToAutoSave = 900; //15 min = 900 s
+
                     //saving current canvas
                     new JFXPanel();
                     Platform.runLater(() ->{
-                    WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
-                    currentCanvas.snapshot(null, writableImage);
-                    RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
-                    //make save file path
-                        String timeStamp = new SimpleDateFormat("MM.dd.yyyy.HH.mm.ss").format(new java.util.Date());
-                        timeStamp = "C:\\\\Users\\\\User\\\\Pictures\\\\" +"AUTOSAVE."+ timeStamp+ ".png";
+                        WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
+                        currentCanvas.snapshot(null, writableImage);
+                        RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
+                        //make save file path
+                        String autoSaveFilePath = "C:\\\\Users\\\\User\\\\Pictures\\\\" +"AUTOSAVE."+ timeStamp + ".png";
                         try {
-                        //jpg is placeholder here and at smart save, can't get saveType to work
-                        ImageIO.write(renderedImage, "png", new File(timeStamp));
-                    } catch (IOException e) {
-                        throw new RuntimeException(e);
-                    }
+                            //autosave image
+                            ImageIO.write(renderedImage, "png", new File(autoSaveFilePath));
+                            //give notif that image was saved
+                            trayIcon.displayMessage("Autosave Status", "File automatically saved in C:\\\\Pictures!", TrayIcon.MessageType.INFO);
+                            //log message
+                            logMessage = "\n\n" +timeStamp + " ["+tabPane.getCurrentTab().getTabTitle()+"]:" + " File has been autosaved";
+                            //log that image was saved
+                            Files.write(eventLoggerPath, logMessage.getBytes(), StandardOpenOption.APPEND);
+                        } catch (IOException e) {
+                            logMessage = "\n\n" +timeStamp + " ["+tabPane.getCurrentTab().getTabTitle()+"]:" + " File has failed to autosave";
+                            trayIcon.displayMessage("Autosave Status", "File failed to save!", TrayIcon.MessageType.ERROR);
+                                try {
+                                    Files.write(eventLoggerPath, logMessage.getBytes(), StandardOpenOption.APPEND);
+                                } catch (IOException ex) {
+                                    throw new RuntimeException(ex);
+                                }
+                            throw new RuntimeException(e);
+                        }
                     });
+
                 }
             }
         }, 1000, 1000); //1k = 1 s in ms
+
+        //Mirror canvas option (horizontally & vertically)
+        Menu OptionsMenu5 = new Menu("Mirror Canvas");
+        MenuItem mirrorHorizontally = new MenuItem("Horizontally");
+        mirrorHorizontally.setOnAction(eventHandler -> {
+            if(currentCanvas.getScaleX()>0) {
+                currentCanvas.setScaleX(-1);
+            }else if(currentCanvas.getScaleX()<0){
+                currentCanvas.setScaleX(1);
+            }
+        });
+        MenuItem mirrorVertically = new MenuItem("Vertically");
+        mirrorVertically.setOnAction(eventHandler -> {
+            if(currentCanvas.getScaleY()>0) {
+                currentCanvas.setScaleY(-1);
+            }else if(currentCanvas.getScaleY()<0){
+                currentCanvas.setScaleY(1);
+            }
+        });
+        OptionsMenu5.getItems().addAll(mirrorHorizontally, mirrorVertically);
+
+        //rotate canvas option
+        Menu OptionsMenu6 = new Menu("Rotate Canvas");
+        MenuItem ninetyDegreesOption = new MenuItem("90°");
+        ninetyDegreesOption.setOnAction(eventHandler -> {
+            gc = currentCanvas.getGraphicsContext2D();
+            //rotate canvas
+            currentCanvas.rotateCanvas(90);
+        });
+        MenuItem oneEightyDegreesOption = new MenuItem("180°");
+        oneEightyDegreesOption.setOnAction(eventHandler -> {
+            gc = currentCanvas.getGraphicsContext2D();
+            //rotate canvas
+            currentCanvas.rotateCanvas(180);
+        });
+        MenuItem twoSeventyDegreesOption = new MenuItem("270°");
+        twoSeventyDegreesOption.setOnAction(eventHandler -> {
+            gc = currentCanvas.getGraphicsContext2D();
+            //rotate canvas
+            currentCanvas.rotateCanvas(270);
+        });
+        OptionsMenu6.getItems().addAll(ninetyDegreesOption,oneEightyDegreesOption, twoSeventyDegreesOption);
 
         //Help Menu
         Menu HelpMenu = new Menu("Help");
@@ -540,7 +646,7 @@ public class Paint_mainWindow {
         //Adding items to their respective menus
         FileMenu.getItems().addAll(filemenu1, filemenu2, new SeparatorMenuItem(), filemenu3, filemenu4, new SeparatorMenuItem(), filemenu5);
         EditMenu.getItems().addAll(EditMenu1, EditMenu2, new SeparatorMenuItem(), EditMenu3);
-        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu2, new SeparatorMenuItem(), OptionsMenu3, new SeparatorMenuItem(), OptionMenu4);
+        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu3, OptionsMenu2, new SeparatorMenuItem(), OptionsMenu5, OptionsMenu6, new SeparatorMenuItem(), OptionMenu4);
         HelpMenu.getItems().addAll(helpmenu1, helpmenu2);
         //Adding menus to bar
         menubar.getMenus().addAll(FileMenu, EditMenu, OptionsMenu, HelpMenu);
@@ -553,6 +659,13 @@ public class Paint_mainWindow {
 
         //stop execution of code when window is closed
         stage.setOnCloseRequest(stageClosed -> {
+            String softwareClosedTimeStamp = new SimpleDateFormat("MM.dd.yyyy.HH.mm.ss").format(new java.util.Date());
+            logMessage = "\n\n" + softwareClosedTimeStamp + " SOFWARE CLOSED\n-----------------------------------------------------------";
+            try {
+                Files.write(eventLoggerPath, logMessage.getBytes(), StandardOpenOption.APPEND);
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
             System.exit(0);
         });
 
@@ -560,4 +673,5 @@ public class Paint_mainWindow {
         stage.show();
 
     }
+
 }

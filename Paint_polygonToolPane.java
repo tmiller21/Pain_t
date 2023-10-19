@@ -23,7 +23,7 @@ public class Paint_polygonToolPane extends TitledPane {
     TextField polygonSidesField = new TextField();
 
     public Paint_polygonToolPane(){
-        this.setText("Polygon");
+        this.setText("Polygon  ⎔");
         polygonSlider.setMajorTickUnit(18);
         polygonSlider.setMinorTickCount(9);
         polygonSlider.setBlockIncrement(1);
