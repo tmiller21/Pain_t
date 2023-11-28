@@ -1,6 +1,5 @@
 package com.example.paint;
 import java.awt.*;
-import java.awt.event.ActionListener;
 import java.awt.image.RenderedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -26,7 +25,6 @@ import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
 import javafx.scene.control.ScrollPane;
-import javafx.scene.control.TextField;
 import javafx.scene.image.WritableImage;
 import javafx.scene.layout.*;
 import javafx.scene.paint.Color;
@@ -56,7 +54,7 @@ public class Paint_mainWindow {
     Image image;
 
     //Get path & empty string for event logger
-    Path eventLoggerPath = Paths.get("C:\\\\Users\\\\User\\\\Desktop\\\\Coding Projects\\\\Paint\\\\Paint_EventLogger.txt");
+    Path eventLoggerPath = Paths.get("C:\\\\Users\\\\Owner\\\\Old Laptop Files\\\\Coding Projects\\\\Paint\\\\Paint_EventLogger.txt");
     String logMessage;
 
     double imageWidth;
@@ -401,7 +399,7 @@ public class Paint_mainWindow {
         MenuItem EditMenu3 = new MenuItem("_Paste   \uD83D\uDCCB");
 
         //Options menu
-        Menu OptionsMenu = new Menu("Options");
+        Menu OptionsMenu = new Menu("_Options");
 
         //Making option to crop canvas
         MenuItem OptionsMenu1 = new MenuItem("Crop Canvas");
@@ -457,71 +455,10 @@ public class Paint_mainWindow {
             clearCanvasStage.show();
         });
 
-
-        //Resize canvas option (NEEDS TO KEEP ALL CONTENT AND RESIZE)
-        MenuItem OptionsMenu3 = new MenuItem("Resize Canvas");
-        OptionsMenu3.setOnAction(eventHandler -> {
-            //Create new stage and scene for text field
-            Stage resizeImageStage = new Stage();
-            //Make hbox for labels size by size
-            HBox fieldLabelBox = new HBox();
-            Text widthText = new Text("Width");
-            Text heightText = new Text("Height");
-            fieldLabelBox.getChildren().addAll(widthText, heightText);
-            //Center and space text
-            fieldLabelBox.setSpacing(70);
-            fieldLabelBox.setAlignment(Pos.CENTER);
-
-            //Make hbox for fields side by side
-            HBox fieldBox = new HBox();
-            //Create text fields
-            TextField widthField = new TextField(Double.toString(imageWidth));
-            //Make x to go between height and width
-            Text fieldX = new Text("X");
-            TextField heightField = new TextField(Double.toString(imageHeight));
-            //Space out box
-            fieldBox.setSpacing(10);
-            fieldBox.setPadding(new Insets(10, 10, 10, 10));
-            //Add text fields to hbox
-            fieldBox.getChildren().addAll(widthField, fieldX, heightField);
-            fieldBox.setAlignment(Pos.CENTER);
-
-            //Make resize button
-            Button resizeButton = new Button("Resize");
-            //Make button resize image to what is in fields when it is a double
-            resizeButton.setOnAction(evenhanded -> {
-                try {
-                    //Get context and snapshot from canvas before resizing
-                    gc = currentCanvas.getGraphicsContext2D();
-                    WritableImage writableImage = new WritableImage((int) currentCanvas.getWidth(), (int) currentCanvas.getHeight());
-                    currentCanvas.snapshot(null, writableImage);
-                    //set width and height to what is entered in field
-                    imageWidth = Double.parseDouble(widthField.getText());
-                    imageHeight = Double.parseDouble(heightField.getText());
-                    //set canvas width and height
-                    currentCanvas.setWidth(imageWidth);
-                    currentCanvas.setHeight(imageHeight);
-                    //redraw image at new size in resized canvas
-                    writableImage.widthProperty().isEqualTo((long) imageWidth);
-                    writableImage.heightProperty().isEqualTo((long) imageHeight);
-                    RenderedImage resizedImage = SwingFXUtils.fromFXImage(writableImage, null);
-                    gc.drawImage((Image) resizedImage,0,0,imageWidth,imageHeight);
-                } catch (Exception e) {
-                    throw new RuntimeException(e);
-                }
-            });
-
-            //Vertical box for resize fields and resize button
-            VBox resizeBox = new VBox();
-            resizeBox.getChildren().addAll(fieldLabelBox, fieldBox, resizeButton);
-            resizeBox.setAlignment(Pos.CENTER);
-
-            Scene stageScene = new Scene(resizeBox, 200, 100);
-            //Set title and resizeable and show
-            resizeImageStage.setTitle("Resize Image");
-            resizeImageStage.setResizable(false);
-            resizeImageStage.setScene(stageScene);
-            resizeImageStage.show();
+        MenuItem OptionsMenu3 = new MenuItem("_Home Position");
+        OptionsMenu3.setOnAction(eventHandler ->{
+            startWorkspace.setVvalue(0);
+            startWorkspace.setHvalue(0);
         });
 
         //hide/show autosave timer
@@ -569,7 +506,7 @@ public class Paint_mainWindow {
                         currentCanvas.snapshot(null, writableImage);
                         RenderedImage renderedImage = SwingFXUtils.fromFXImage(writableImage, null);
                         //make save file path
-                        String autoSaveFilePath = "C:\\\\Users\\\\User\\\\Pictures\\\\" +"AUTOSAVE."+ timeStamp + ".png";
+                        String autoSaveFilePath = "C:\\\\Users\\\\Owner\\\\Pictures\\\\" +"AUTOSAVE."+ timeStamp + ".png";
                         try {
                             //autosave image
                             ImageIO.write(renderedImage, "png", new File(autoSaveFilePath));
@@ -646,7 +583,7 @@ public class Paint_mainWindow {
         //Adding items to their respective menus
         FileMenu.getItems().addAll(filemenu1, filemenu2, new SeparatorMenuItem(), filemenu3, filemenu4, new SeparatorMenuItem(), filemenu5);
         EditMenu.getItems().addAll(EditMenu1, EditMenu2, new SeparatorMenuItem(), EditMenu3);
-        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu3, OptionsMenu2, new SeparatorMenuItem(), OptionsMenu5, OptionsMenu6, new SeparatorMenuItem(), OptionMenu4);
+        OptionsMenu.getItems().addAll(OptionsMenu1, OptionsMenu2, OptionsMenu3, new SeparatorMenuItem(), OptionsMenu5, OptionsMenu6, new SeparatorMenuItem(), OptionMenu4);
         HelpMenu.getItems().addAll(helpmenu1, helpmenu2);
         //Adding menus to bar
         menubar.getMenus().addAll(FileMenu, EditMenu, OptionsMenu, HelpMenu);

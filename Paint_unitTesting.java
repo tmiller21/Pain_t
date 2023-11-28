@@ -29,7 +29,7 @@ public class Paint_unitTesting {
     @Test
     //1st test pushes item into undo stack and checks if stack is empty
     public void test1(){
-        Image testImage = new Image("C:\\\\Users\\\\User\\\\Pictures\\\\Spongebank.jpg");
+        Image testImage = new Image("C:\\\\Users\\\\Owner\\\\Pictures\\\\Spongebank.jpg");
         testCanvas.undoStack.push(testImage);
         assertFalse(testCanvas.undoStack.isEmpty());
     }
